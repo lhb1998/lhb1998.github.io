@@ -1,0 +1,227 @@
+
+<!DOCTYPE html>
+<html lang="zh" class="loading">
+<head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1" />
+    <meta name="viewport" content="width=device-width, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>2021-在树莓派上的docker容器内配置librosa - LHB&#39;s Blog</title>
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="google" content="notranslate" />
+    <meta name="keywords" content="Fechin,"> 
+    <meta name="description" content="Background最近需要在树莓派的docker环境上部署机器学习项目，其中一个与音频相关。依赖环境如下：
+
+librosa
+numpy
+pandas
+wave
+soundfile
+sklearn,"> 
+    <meta name="author" content="Haobin Luo"> 
+    <link rel="alternative" href="atom.xml" title="LHB&#39;s Blog" type="application/atom+xml"> 
+    <link rel="icon" href="/img/favicon.jpg"> 
+    
+    
+<link rel="stylesheet" href="/css/diaspora.css">
+
+	<script async src="//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+    <script>
+         (adsbygoogle = window.adsbygoogle || []).push({
+              google_ad_client: "ca-pub-8691406134231910",
+              enable_page_level_ads: true
+         });
+    </script>
+    <script async custom-element="amp-auto-ads"
+        src="https://cdn.ampproject.org/v0/amp-auto-ads-0.1.js">
+    </script>
+<meta name="generator" content="Hexo 5.2.0"></head>
+
+<body class="loading">
+    <span id="config-title" style="display:none">LHB&#39;s Blog</span>
+    <div id="loader"></div>
+    <div id="single">
+    <div id="top" style="display: block;">
+    <div class="bar" style="width: 0;"></div>
+    <a class="iconfont icon-home image-icon" href="javascript:;" data-url="http://example.com"></a>
+    <div title="播放/暂停" class="iconfont icon-play"></div>
+    <h3 class="subtitle">2021-在树莓派上的docker容器内配置librosa</h3>
+    <div class="social">
+        <div>
+            <div class="share">
+                <a title="获取二维码" class="iconfont icon-scan" href="javascript:;"></a>
+            </div>
+            <div id="qr"></div>
+        </div>
+    </div>
+    <div class="scrollbar"></div>
+</div>
+
+    <div class="section">
+        <div class="article">
+    <div class='main'>
+        <h1 class="title">2021-在树莓派上的docker容器内配置librosa</h1>
+        <div class="stuff">
+            <span>一月 03, 2021</span>
+            
+
+        </div>
+        <div class="content markdown">
+            <h2 id="Background"><a href="#Background" class="headerlink" title="Background"></a>Background</h2><p>最近需要在树莓派的docker环境上部署机器学习项目，其中一个与音频相关。<br>依赖环境如下：</p>
+<ul>
+<li>librosa</li>
+<li>numpy</li>
+<li>pandas</li>
+<li>wave</li>
+<li>soundfile</li>
+<li>sklearn</li>
+<li>tqdm</li>
+<li>matplotlib</li>
+<li>pyaudio<br>按顺序配置的话，只有librosa和pyaudio没法直接pip安装</li>
+</ul>
+<h2 id="Getting-Started"><a href="#Getting-Started" class="headerlink" title="Getting Started"></a>Getting Started</h2><h3 id="搜索Docker-Hub"><a href="#搜索Docker-Hub" class="headerlink" title="搜索Docker Hub"></a>搜索Docker Hub</h3><p>首先看docker hub上有没有已有的镜像。</p>
+<p>搜索librosa，筛选arm架构，还真有。</p>
+<p>点进去一看，用的是qemu虚拟机，会造成性能损失。</p>
+<p>树莓派本来就弱，所以能不用qemu就尽量别用qemu。</p>
+<h3 id="基础镜像的选择"><a href="#基础镜像的选择" class="headerlink" title="基础镜像的选择"></a>基础镜像的选择</h3><p>我选择的是python:3.7，在2020年底绝对算是个稳定的版本。</p>
+<h2 id="配置librosa"><a href="#配置librosa" class="headerlink" title="配置librosa"></a>配置librosa</h2><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">docker run -it python:3.7 /bin/bash</span><br><span class="line"></span><br><span class="line">pip install librosa</span><br></pre></td></tr></table></figure>
+
+<p>这里会遇到第一次报错，大意是缺少mkl_rt openblas lapack等环境</p>
+<p>搜到一个解决方案：<a target="_blank" rel="noopener" href="https://blog.csdn.net/u010018991/article/details/107896030">https://blog.csdn.net/u010018991/article/details/107896030</a></p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">pip install Cython</span><br><span class="line"></span><br><span class="line">apt install gfortran</span><br><span class="line"></span><br><span class="line">apt install libopenblas-dev liblapack-dev libatlas-base-dev libblas-dev</span><br></pre></td></tr></table></figure>
+
+<p>继续走<code>pip install librosa</code></p>
+<p>遇到了第二次报错，无法安装numba，因为缺少llvm-config</p>
+<p>搜到了一个针对英伟达Jetson的解决方案：<a target="_blank" rel="noopener" href="https://shliang.blog.csdn.net/article/details/109383044">https://shliang.blog.csdn.net/article/details/109383044</a></p>
+<p>去pypi搜索llvmlite对应的llvm版本：<a target="_blank" rel="noopener" href="https://pypi.org/project/llvmlite/">https://pypi.org/project/llvmlite/</a></p>
+<p>pip给我下载的llvmlite为0.35.0，找了2020年8月更新的llvm 10.0.1，下载armv7a的Pre-Built Binaries（树莓派似乎是armv7l）。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="built_in">cd</span> home</span><br><span class="line"></span><br><span class="line">wget https://github.com/llvm/llvm-project/releases/download/llvmorg-10.0.1/clang+llvm-10.0.1-armv7a-linux-gnueabihf.tar.xz</span><br><span class="line"></span><br><span class="line">tar xJvf clang+llvm-10.0.0-aarch64-linux-gnu.tar.xz</span><br><span class="line"></span><br><span class="line">vim ~/.bashrc</span><br></pre></td></tr></table></figure>
+
+<p>在里面加上一行：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">export PATH&#x3D;$PATH:&#x2F;home&#x2F;nano&#x2F;clang+llvm-10.0.0-aarch64-linux-gnu&#x2F;bin</span><br></pre></td></tr></table></figure>
+
+<p>使环境变量生效：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="built_in">source</span> ~/.bashrc</span><br></pre></td></tr></table></figure>
+
+<p>测试llvm</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">clang</span><br></pre></td></tr></table></figure>
+
+<p>如果报错让给输入文件 说明弄好了</p>
+<p>但是我这依然报错：缺少libtinfo.so.5</p>
+<p>按照参考博客</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">apt install libtinfo-dev</span><br></pre></td></tr></table></figure>
+
+<p>仍然失败</p>
+<p>搜了一圈之后没找到</p>
+<p>（已经是准备上qemu了）</p>
+<p>随意试探了一下</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">apt install libtinfo5</span><br><span class="line">clang</span><br></pre></td></tr></table></figure>
+
+<p>成了！再<code>pip install librosa</code>就好了</p>
+<h2 id="配置pyaudio"><a href="#配置pyaudio" class="headerlink" title="配置pyaudio"></a>配置pyaudio</h2><p>报错提示找不到”portaudio.h”</p>
+<p>找了个解决方案：<a target="_blank" rel="noopener" href="https://blog.csdn.net/qq_23729557/article/details/78956602">https://blog.csdn.net/qq_23729557/article/details/78956602</a></p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">apt install portaudio19-dev</span><br></pre></td></tr></table></figure>
+
+<p>再pip就好了。</p>
+<h2 id="Dockerfile示例"><a href="#Dockerfile示例" class="headerlink" title="Dockerfile示例"></a>Dockerfile示例</h2><figure class="highlight dockerfile"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">FROM</span> python:<span class="number">3.7</span></span><br><span class="line"><span class="keyword">MAINTAINER</span> hbluo</span><br><span class="line"></span><br><span class="line"><span class="comment"># 更换apt源和pypi源</span></span><br><span class="line"><span class="keyword">RUN</span><span class="bash"> sed -i <span class="string">&#x27;s/deb.debian.org/mirrors.ustc.edu.cn/g&#x27;</span> /etc/apt/sources.list</span></span><br><span class="line"><span class="keyword">RUN</span><span class="bash"> sed -i <span class="string">&#x27;s|security.debian.org/debian-security|mirrors.ustc.edu.cn/debian-security|g&#x27;</span> /etc/apt/sources.list</span></span><br><span class="line"><span class="keyword">RUN</span><span class="bash"> apt update</span></span><br><span class="line"><span class="keyword">RUN</span><span class="bash"> pip config <span class="built_in">set</span> global.index-url https://pypi.tuna.tsinghua.edu.cn/simple</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 安装scipy依赖库</span></span><br><span class="line"><span class="keyword">RUN</span><span class="bash"> pip install Cython</span></span><br><span class="line"><span class="keyword">RUN</span><span class="bash"> apt install gfortran</span></span><br><span class="line"><span class="keyword">RUN</span><span class="bash"> apt install libopenblas-dev liblapack-dev libatlas-base-dev libblas-dev</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 安装llvm 10</span></span><br><span class="line"><span class="keyword">RUN</span><span class="bash"> apt install libtinfo-dev libtinfo5</span></span><br><span class="line"><span class="keyword">WORKDIR</span><span class="bash"> home</span></span><br><span class="line"><span class="keyword">RUN</span><span class="bash"> wget https://github.com/llvm/llvm-project/releases/download/llvmorg-10.0.1/clang+llvm-10.0.1-armv7a-linux-gnueabihf.tar.xz</span></span><br><span class="line"><span class="keyword">RUN</span><span class="bash"> tar xJvf clang+llvm-10.0.0-aarch64-linux-gnu.tar.xz</span></span><br><span class="line"><span class="comment"># 自备.bashrc文件</span></span><br><span class="line"><span class="keyword">COPY</span><span class="bash"> ./.bashrc ~/.bashrc</span></span><br><span class="line"><span class="keyword">RUN</span><span class="bash"> <span class="built_in">source</span> ~/.bashrc</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 安装pyaudio依赖库</span></span><br><span class="line"><span class="keyword">RUN</span><span class="bash"> apt install portaudio19-dev</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 用requirements.txt安装pip包（需要自己写requirements）</span></span><br><span class="line"><span class="keyword">RUN</span><span class="bash"> pip install -r requirements.txt</span></span><br></pre></td></tr></table></figure>
+            <!--[if lt IE 9]><script>document.createElement('audio');</script><![endif]-->
+            <audio id="audio" loop="1" preload="auto" controls="controls" data-autoplay="false">
+                <source type="audio/mpeg" src="">
+            </audio>
+            
+                <ul id="audio-list" style="display:none">
+                    
+                </ul>
+            
+        </div>
+        
+    <div id='gitalk-container' class="comment link"
+		data-enable='false'
+        data-ae='false'
+        data-ci=''
+        data-cs=''
+        data-r=''
+        data-o=''
+        data-a=''
+        data-d='false'
+    >查看评论</div>
+
+
+    </div>
+    
+</div>
+
+
+    </div>
+</div>
+</body>
+
+
+<script src="//lib.baomitu.com/jquery/1.8.3/jquery.min.js"></script>
+<script src="/js/plugin.js"></script>
+<script src="/js/typed.js"></script>
+<script src="/js/diaspora.js"></script>
+
+
+<link rel="stylesheet" href="/photoswipe/photoswipe.css">
+<link rel="stylesheet" href="/photoswipe/default-skin/default-skin.css">
+
+
+<script src="/photoswipe/photoswipe.min.js"></script>
+<script src="/photoswipe/photoswipe-ui-default.min.js"></script>
+
+
+<!-- Root element of PhotoSwipe. Must have class pswp. -->
+<div class="pswp" tabindex="-1" role="dialog" aria-hidden="true">
+    <!-- Background of PhotoSwipe. 
+         It's a separate element as animating opacity is faster than rgba(). -->
+    <div class="pswp__bg"></div>
+    <!-- Slides wrapper with overflow:hidden. -->
+    <div class="pswp__scroll-wrap">
+        <!-- Container that holds slides. 
+            PhotoSwipe keeps only 3 of them in the DOM to save memory.
+            Don't modify these 3 pswp__item elements, data is added later on. -->
+        <div class="pswp__container">
+            <div class="pswp__item"></div>
+            <div class="pswp__item"></div>
+            <div class="pswp__item"></div>
+        </div>
+        <!-- Default (PhotoSwipeUI_Default) interface on top of sliding area. Can be changed. -->
+        <div class="pswp__ui pswp__ui--hidden">
+            <div class="pswp__top-bar">
+                <!--  Controls are self-explanatory. Order can be changed. -->
+                <div class="pswp__counter"></div>
+                <button class="pswp__button pswp__button--close" title="Close (Esc)"></button>
+                <button class="pswp__button pswp__button--share" title="Share"></button>
+                <button class="pswp__button pswp__button--fs" title="Toggle fullscreen"></button>
+                <button class="pswp__button pswp__button--zoom" title="Zoom in/out"></button>
+                <!-- Preloader demo http://codepen.io/dimsemenov/pen/yyBWoR -->
+                <!-- element will get class pswp__preloader--active when preloader is running -->
+                <div class="pswp__preloader">
+                    <div class="pswp__preloader__icn">
+                      <div class="pswp__preloader__cut">
+                        <div class="pswp__preloader__donut"></div>
+                      </div>
+                    </div>
+                </div>
+            </div>
+            <div class="pswp__share-modal pswp__share-modal--hidden pswp__single-tap">
+                <div class="pswp__share-tooltip"></div> 
+            </div>
+            <button class="pswp__button pswp__button--arrow--left" title="Previous (arrow left)">
+            </button>
+            <button class="pswp__button pswp__button--arrow--right" title="Next (arrow right)">
+            </button>
+            <div class="pswp__caption">
+                <div class="pswp__caption__center"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+
+
+
+
+</html>
